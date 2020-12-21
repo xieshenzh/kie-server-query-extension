@@ -1,5 +1,6 @@
 package com.redhat.example.extension;
 
+import com.redhat.example.extension.model.ProcessInstanceUserTaskDetailsVariableList;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
@@ -64,7 +65,7 @@ public class AuthenticatedQueryResource {
                     .findFirst().get();
             final Set<UserTaskInstanceWithPotOwnerDesc> userTaskInstanceWithPotOwnerDescs = new TreeSet<>(userTaskInstanceWithPotOwnerDescComparator);
             getUserAndRoles(filter.getOwners()).stream().map(pot -> executeQuery(advanceRuntimeDataService, filter, pot, new QueryContext(page, pageSize))).forEach(userTaskInstanceWithPotOwnerDescs::addAll);
-            final ProcessInstanceUserTaskWithVariablesList taskVariableSummaryList = ConvertUtils.convertToUserTaskWithVariablesList(new ArrayList<>(userTaskInstanceWithPotOwnerDescs));
+            final ProcessInstanceUserTaskDetailsVariableList taskVariableSummaryList = com.redhat.example.extension.utils.ConvertUtils.convertToUserTaskWithVariablesList(new ArrayList<>(userTaskInstanceWithPotOwnerDescs));
             return RestUtils.createCorrectVariant(taskVariableSummaryList, headers, Response.Status.OK, conversationIdHeader);
         } catch (Exception e) {
             LOGGER.error("Unexpected error during processing {}", e.getMessage(), e);
