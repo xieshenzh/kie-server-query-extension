@@ -1,9 +1,6 @@
 package com.redhat.example.extension.model;
 
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlElement;
-import javax.xml.bind.annotation.XmlRootElement;
+import javax.xml.bind.annotation.*;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -83,9 +80,9 @@ public class ProcessInstanceUserTaskDetailsWithVariables {
     )
     private Integer slaCompliance;
 
-
-
-
+    @XmlElementWrapper(name="task-events")
+    @XmlElement(name="task-event")
+    private List<UserTaskEvent> taskEvents;
 
     public ProcessInstanceUserTaskDetailsWithVariables() {
     }
@@ -224,6 +221,14 @@ public class ProcessInstanceUserTaskDetailsWithVariables {
 
     public void setSlaCompliance(Integer slaCompliance) {
         this.slaCompliance = slaCompliance;
+    }
+
+    public List<UserTaskEvent> getTaskEvents() {
+        return taskEvents;
+    }
+
+    public void setTaskEvents(List<UserTaskEvent> taskEvents) {
+        this.taskEvents = taskEvents;
     }
 
     public String toString() {
