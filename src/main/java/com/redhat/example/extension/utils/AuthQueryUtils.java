@@ -6,6 +6,7 @@ import com.redhat.example.extension.model.ProcessInstanceUserTaskDetailsWithVari
 import com.redhat.example.extension.model.UserTaskEvent;
 import org.jbpm.services.api.AdvanceRuntimeDataService;
 import org.jbpm.services.api.RuntimeDataService;
+import org.jbpm.services.api.model.UserTaskInstanceDesc;
 import org.jbpm.services.api.model.UserTaskInstanceWithPotOwnerDesc;
 import org.kie.api.runtime.query.QueryContext;
 import org.kie.internal.identity.IdentityProvider;
@@ -89,9 +90,11 @@ public class AuthQueryUtils {
     }
 
     public Function<UserTaskInstanceWithPotOwnerDesc, ProcessInstanceUserTaskDetailsWithVariables> toProcessInstanceUserTaskDetailsWithVariables = (desc) -> {
+        UserTaskInstanceDesc userTaskInstanceDesc = getTask(desc.getTaskId());
         ProcessInstanceUserTaskDetailsWithVariables var = new ProcessInstanceUserTaskDetailsWithVariables();
         var.setId(desc.getTaskId());
         var.setName(desc.getName());
+        var.setDescription(userTaskInstanceDesc.getDescription());
         var.setCorrelationKey(desc.getCorrelationKey());
         var.setActualOwner(desc.getActualOwner());
         var.setProcessDefinitionId(desc.getProcessId());
@@ -125,4 +128,7 @@ public class AuthQueryUtils {
         return taskDesc;
     };
 
+    private UserTaskInstanceDesc getTask(Long taskId) {
+        return runtimeDataServiceBase.getTaskById(taskId);
+    }
 }
