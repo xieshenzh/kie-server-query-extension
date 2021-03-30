@@ -85,7 +85,7 @@ public class AuthenticatedQueryResource {
             final List<ProcessInstanceUserTaskDetailsWithVariables> taskDetailsList = authQueryUtils.getUserTaskInstancePotentialOwnerAware
                     .apply(filter, queryContext)
                     .stream()
-                    .map(authQueryUtils.toProcessInstanceUserTaskDetailsWithVariables)
+                    .map(t -> authQueryUtils.toProcessInstanceUserTaskDetailsWithVariables.apply(t, null))
                     .map(taskDetails -> authQueryUtils.addEventsToProcessInstanceUserTaskDetailsWithVariables.apply(taskDetails, runtimeDataServiceBase.getTaskEvents(taskDetails.getId(), null)))
                     .collect(Collectors.toList());
 
@@ -106,8 +106,10 @@ public class AuthenticatedQueryResource {
         Variant v = getVariant(headers);
         Header conversationIdHeader = RestUtils.buildConversationIdHeader("", context, headers);
 
+        AuthQueryUtils authQueryUtils = new AuthQueryUtils(bypassAuthUser, identityProvider, advanceRuntimeDataService, runtimeDataServiceBase);
+
         try {
-            UserTaskInstanceDesc userTaskInstanceDesc = runtimeDataServiceBase.getTaskById(taskId);
+            UserTaskInstanceDesc userTaskInstanceDesc = authQueryUtils.getTask(taskId);
 
             if (userTaskInstanceDesc == null) {
                 throw new TaskNotFoundException("No task found with id " + taskId);
@@ -118,12 +120,11 @@ public class AuthenticatedQueryResource {
             attributesQueryParams.add(new org.jbpm.services.api.query.model.QueryParam(PROCESS_ATTR_INSTANCE_ID, "EQUALS_TO", Collections.singletonList(userTaskInstanceDesc.getProcessInstanceId())));
             attributesQueryParams.add(new org.jbpm.services.api.query.model.QueryParam(TASK_ATTR_NAME, "EQUALS_TO", Collections.singletonList(userTaskInstanceDesc.getName())));
 
-            AuthQueryUtils authQueryUtils = new AuthQueryUtils(bypassAuthUser, identityProvider, advanceRuntimeDataService, runtimeDataServiceBase);
-
             List<UserTaskInstanceWithPotOwnerDesc> taskInstanceWithPotOwnerDescs = advanceRuntimeDataService.queryUserTasksByVariables(attributesQueryParams, null, null, null, new QueryContext(0, 0));
             ProcessInstanceUserTaskDetailsWithVariables taskDetails = taskInstanceWithPotOwnerDescs.stream()
                     .filter(desc -> userTaskInstanceDesc.getTaskId().equals(desc.getTaskId()))
-                    .map(authQueryUtils.toProcessInstanceUserTaskDetailsWithVariables).findAny().orElseThrow(() -> new TaskNotFoundException("No task found with id " + taskId));
+                    .map(t -> authQueryUtils.toProcessInstanceUserTaskDetailsWithVariables.apply(t, userTaskInstanceDesc))
+                    .findAny().orElseThrow(() -> new TaskNotFoundException("No task found with id " + taskId));
             return RestUtils.createCorrectVariant(taskDetails, headers, Response.Status.OK, conversationIdHeader);
         } catch (TaskNotFoundException e) {
             return notFound(MessageFormat.format("Could not find task instance with id \"{0}\"", taskId), v, conversationIdHeader);

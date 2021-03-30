@@ -6,6 +6,7 @@ import com.redhat.example.extension.model.ProcessInstanceUserTaskDetailsWithVari
 import com.redhat.example.extension.model.UserTaskEvent;
 import org.jbpm.services.api.AdvanceRuntimeDataService;
 import org.jbpm.services.api.RuntimeDataService;
+import org.jbpm.services.api.model.UserTaskInstanceDesc;
 import org.jbpm.services.api.model.UserTaskInstanceWithPotOwnerDesc;
 import org.kie.api.runtime.query.QueryContext;
 import org.kie.internal.identity.IdentityProvider;
@@ -32,7 +33,7 @@ public class AuthQueryUtils {
 
     private boolean bypassAuthUser;
 
-    public AuthQueryUtils(boolean bypassAuthUser, IdentityProvider identityProvider, AdvanceRuntimeDataService advanceRuntimeDataService, RuntimeDataService runtimeDataServiceBase){
+    public AuthQueryUtils(boolean bypassAuthUser, IdentityProvider identityProvider, AdvanceRuntimeDataService advanceRuntimeDataService, RuntimeDataService runtimeDataServiceBase) {
         this.bypassAuthUser = bypassAuthUser;
         this.identityProvider = identityProvider;
         this.advanceRuntimeDataService = advanceRuntimeDataService;
@@ -50,7 +51,7 @@ public class AuthQueryUtils {
     }
 
     public BiFunction<SearchQueryFilterSpec, QueryContext, List<UserTaskInstanceWithPotOwnerDesc>> executeQuery = (filter, queryContext) -> {
-        final List<UserTaskInstanceWithPotOwnerDesc> userTaskInstancesWithPotOwnerDesc =  advanceRuntimeDataService.queryUserTasksByVariables(
+        final List<UserTaskInstanceWithPotOwnerDesc> userTaskInstancesWithPotOwnerDesc = advanceRuntimeDataService.queryUserTasksByVariables(
                 ConvertUtils.convertToServiceApiQueryParam(filter.getAttributesQueryParams()),
                 ConvertUtils.convertToServiceApiQueryParam(filter.getTaskVariablesQueryParams()),
                 ConvertUtils.convertToServiceApiQueryParam(filter.getProcessVariablesQueryParams()),
@@ -82,16 +83,18 @@ public class AuthQueryUtils {
 
     public ProcessInstanceUserTaskDetailsVariableList convertToUserTaskWithVariablesList(List<UserTaskInstanceWithPotOwnerDesc> queryUserTasksByVariables, final Map<Long, List<TaskEvent>> taskEvents) {
         List<ProcessInstanceUserTaskDetailsWithVariables> taskDetailsList = queryUserTasksByVariables.stream()
-                .map(toProcessInstanceUserTaskDetailsWithVariables)
+                .map(t -> toProcessInstanceUserTaskDetailsWithVariables.apply(t, null))
                 .map(taskDesc -> addEventsToProcessInstanceUserTaskDetailsWithVariables.apply(taskDesc, taskEvents.get(taskDesc.getId())))
                 .collect(Collectors.toList());
         return new ProcessInstanceUserTaskDetailsVariableList(taskDetailsList);
     }
 
-    public Function<UserTaskInstanceWithPotOwnerDesc, ProcessInstanceUserTaskDetailsWithVariables> toProcessInstanceUserTaskDetailsWithVariables = (desc) -> {
+    public BiFunction<UserTaskInstanceWithPotOwnerDesc, UserTaskInstanceDesc, ProcessInstanceUserTaskDetailsWithVariables> toProcessInstanceUserTaskDetailsWithVariables = (desc, task) -> {
+        UserTaskInstanceDesc userTaskInstanceDesc = Optional.ofNullable(task).orElseGet(() -> getTask(desc.getTaskId()));
         ProcessInstanceUserTaskDetailsWithVariables var = new ProcessInstanceUserTaskDetailsWithVariables();
         var.setId(desc.getTaskId());
         var.setName(desc.getName());
+        var.setDescription(userTaskInstanceDesc.getDescription());
         var.setCorrelationKey(desc.getCorrelationKey());
         var.setActualOwner(desc.getActualOwner());
         var.setProcessDefinitionId(desc.getProcessId());
@@ -102,7 +105,7 @@ public class AuthQueryUtils {
         var.setStatus(desc.getStatus());
         var.setCreatedBy(desc.getCreatedBy());
         var.setCreatedOn(desc.getCreatedOn());
-        var.setActivationTime(desc.getActivationTime());
+        var.setActivationTime(Optional.ofNullable(desc.getActivationTime()).orElseGet(userTaskInstanceDesc::getActivationTime));
         var.setDueDate(desc.getDueDate());
         var.setPriority(desc.getPriority());
         var.setSlaDueDate(desc.getSlaDueDate());
@@ -125,4 +128,7 @@ public class AuthQueryUtils {
         return taskDesc;
     };
 
+    public UserTaskInstanceDesc getTask(Long taskId) {
+        return runtimeDataServiceBase.getTaskById(taskId);
+    }
 }
